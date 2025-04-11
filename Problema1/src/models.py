@@ -72,9 +72,12 @@ class LogisticRegression():
         if fit:
             self.fit()
     
+    
     def sigmoid(self, z):
-        """Función sigmoide."""
+        np.clip(z, -500, 500)  # Evitar overflow
         return 1 / (1 + np.exp(-z))
+
+    
 
     def gradiente(self, b0):
         """Calcula el gradiente de la función de error logístico."""
@@ -104,7 +107,7 @@ class LogisticRegression():
             
         return self.sigmoid(X @ self.coef)
 
-    def predict(self, X):
+    def predict(self, X, threshold=0.5):
         """Realiza predicciones de clase con el modelo entrenado."""
-        return (self.predict_proba(X) >= 0.5).astype(int)
+        return (self.predict_proba(X) >= threshold).astype(int)
 
