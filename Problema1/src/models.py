@@ -16,8 +16,9 @@ class LogisticRegression():
             self.fit()
     
     def sigmoid(self, z):
-        z = np.clip(z, -500, 500)  # Evitar overflow
-        return 1 / (1 + np.exp(-z))
+        # z = np.clip(z, -500, 500)  # Evitar overflow
+        # return 1 / (1 + np.exp(-z))
+        return np.where(z >= 0, 1 / (1 + np.exp(-z)), np.exp(z) / (1 + np.exp(z)))
 
 
     def gradiente(self, b0):
