@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from IPython.display import display
     
 class LogisticRegression():
     def __init__(self, X, y, lr=0.01, threshold=0.5, L2=0, fit=True, weights=None):
@@ -16,8 +17,6 @@ class LogisticRegression():
             self.fit()
     
     def sigmoid(self, z):
-        # z = np.clip(z, -500, 500)  # Evitar overflow
-        # return 1 / (1 + np.exp(-z))
         return np.where(z >= 0, 1 / (1 + np.exp(-z)), np.exp(z) / (1 + np.exp(z)))
 
 
@@ -59,3 +58,14 @@ class LogisticRegression():
         """Realiza predicciones de clase con el modelo entrenado."""
         return (self.predict_proba(X) >= self.threshold).astype(int)
 
+    def show_hyperparameters(self):
+        """Muestra los hiperparámetros del modelo."""
+        hyperparams = {
+            'learning_rate': self.lr,
+            'threshold': self.threshold,
+            'L2': self.L2,
+            'weights': (self.weights)
+        }
+        df = pd.DataFrame(hyperparams, index=["Hyperparameters"])
+        display(df)
+    

@@ -33,34 +33,57 @@ def clean_outliers_iqr(df):
 
     return df_clean
 
-def clean_outliers(df):
+def clean_outliers(df, limits):
     """Elimina los outliers de las columnas numéricas según límites predefinidos.
 
     Parámetros:
     - df (pd.DataFrame): DataFrame de entrada."""
-    
-    limits = {
-    'CellSize': (0, 200), 'CellShape': (0, np.inf), 'CellAdhesion': (0, 1),
-    'NucleusDensity': (0, 20), 'MitosisRate': (0, 50), 'NuclearMembrane': (1, 5), 
-    'GrowthFactor': (0, 200), 'OxygenSaturation': (0, 100), 'Vascularization': (0, 10),
-    'InflammationMarkers': (0, 100), 'CytoplasmSize': (-np.inf, 100), 'ChromatinTexture': (0, 100),
-    }
 
     for col, (min_val, max_val) in limits.items():
         df[col] = df[col].where(df[col].between(min_val, max_val) | df[col].isna())
 
-def train_val_split(dx, dy=None, split=0.8):
+# def train_val_split(dx, dy=None, split=0.8):
+#     """Divide dx y dy en conjuntos de entrenamiento y validación.
+
+#     Parámetros:
+#     - dx (pd.DataFrame): features.
+#     - dy (pd.Series, opcional): etiquetas.
+#     - split (float): proporción para el set de entrenamiento.
+
+#     Retorna:
+#     - tuple: subconjuntos divididos (x_train, x_val, y_train, y_val) si dy está dado, sino solo (x_train, x_val)."""
+#     n = len(dx)
+#     n = int(n * split)
+#     x_train = dx[:n].copy()
+#     x_val = dx[n:].copy()
+#     if dy is None:
+#         return x_train, x_val
+#     y_train = dy[:n].copy()
+#     y_val = dy[n:].copy()
+#     return x_train, x_val, y_train, y_val
+
+def train_val_split(dx, dy=None, split=0.8, shuffle=False, random_state=None):
     """Divide dx y dy en conjuntos de entrenamiento y validación.
 
     Parámetros:
     - dx (pd.DataFrame): features.
     - dy (pd.Series, opcional): etiquetas.
     - split (float): proporción para el set de entrenamiento.
+    - shuffle (bool): si True, desordena los datos antes de dividir.
+    - random_state (int, opcional): semilla para reproducibilidad del shuffle.
 
     Retorna:
     - tuple: subconjuntos divididos (x_train, x_val, y_train, y_val) si dy está dado, sino solo (x_train, x_val)."""
-    n = len(dx)
-    n = int(n * split)
+    if shuffle:
+        if dy is not None:
+            combined = pd.concat([dx, dy], axis=1)
+            combined = combined.sample(frac=1, random_state=random_state).reset_index(drop=True)
+            dx = combined.iloc[:, :-1]
+            dy = combined.iloc[:, -1]
+        else:
+            dx = dx.sample(frac=1, random_state=random_state).reset_index(drop=True)
+
+    n = int(len(dx) * split)
     x_train = dx[:n].copy()
     x_val = dx[n:].copy()
     if dy is None:
@@ -68,6 +91,8 @@ def train_val_split(dx, dy=None, split=0.8):
     y_train = dy[:n].copy()
     y_val = dy[n:].copy()
     return x_train, x_val, y_train, y_val
+
+
 
 def robust_fit(X):
     """Calcula mediana e IQR.  
@@ -176,39 +201,48 @@ def oversample_duplication(df, col):
     return pd.concat([df_min, df_maj]).sample(frac=1, random_state=42).reset_index(drop=True)
 
 def smote(df, col, k=5, features=None):
-    """Aplica SMOTE y devuelve el dataset balanceado.
+    """
+    Aplica SMOTE para balancear clases (binaria o multiclase).
 
     Parámetros:
     - df (pd.DataFrame): dataset de entrada.
-    - col (str): columna objetivo binaria.
+    - col (str): columna objetivo.
     - k (int): número de vecinos para SMOTE.
     - features (list[str], opcional): columnas a usar como features.
 
     Retorna:
-    - pd.DataFrame: dataset con ejemplos sintéticos añadidos."""
+    - pd.DataFrame: dataset con ejemplos sintéticos añadidos.
+    """
+    import pandas as pd
     from random import randint, uniform
 
     if features is None:
         features = df.columns.drop(col)
 
-    minority_class = df[col].value_counts().idxmin()
-    x = df[df[col] == minority_class].reset_index(drop=True)
-    n_sinteticos = abs(df[col].value_counts()[0] - df[col].value_counts()[1])
-    
+    counts = df[col].value_counts()
+    max_class = counts.idxmax()
+    max_count = counts.max()
+
     sinteticos = []
 
-    for _ in range(n_sinteticos):
-        i = randint(0, len(x) - 1)
-        punto = x.loc[i]
-        vecinos = get_knn(punto, x, col, k, features)
-        if vecinos is None or len(vecinos) == 0:
+    for cls, count in counts.items():
+        if cls == max_class:
             continue
-        vecino = vecinos.sample(1).iloc[0]
-        nuevo = {}
-        for f in features:
-            nuevo[f] = punto[f] + uniform(0, 1) * (vecino[f] - punto[f])
-        nuevo[col] = minority_class
-        sinteticos.append(nuevo)
+        x = df[df[col] == cls].reset_index(drop=True)
+        n_sinteticos = max_count - count
+
+        for _ in range(n_sinteticos):
+            i = randint(0, len(x) - 1)
+            punto = x.loc[i]
+            vecinos = get_knn(punto, x, col, k, features)
+            if vecinos is None or len(vecinos) == 0:
+                continue
+            vecino = vecinos.sample(1).iloc[0]
+            nuevo = {}
+            for f in features:
+                nuevo[f] = punto[f] + uniform(0, 1) * (vecino[f] - punto[f])
+            nuevo[col] = cls
+            sinteticos.append(nuevo)
 
     df_sint = pd.DataFrame(sinteticos)
     return pd.concat([df, df_sint], ignore_index=True)

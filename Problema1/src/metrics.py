@@ -56,21 +56,20 @@ def accuracy(y_true, y_pred):
     return np.mean(y_true == y_pred)
 
 def matriz_de_confusion(y_true, y_pred):
-    """Muestra la matriz de confusión en formato visual (heatmap).
+    """Calcula y devuelve la matriz de confusión.
 
     Parámetros:
     - y_true (Series): etiquetas verdaderas.
-    - y_pred (Series): etiquetas predichas."""
+    - y_pred (Series): etiquetas predichas.
+
+    Retorna:
+    - cm (ndarray): matriz de confusión 2x2.
+    """
     tp = np.sum((y_pred == 1) & (y_true == 1))
     tn = np.sum((y_pred == 0) & (y_true == 0))
     fp = np.sum((y_pred == 1) & (y_true == 0))
     fn = np.sum((y_pred == 0) & (y_true == 1))
-    cm = np.array([[tn, fp], [fn, tp]])
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['0', '1'], yticklabels=['0', '1'])
-    plt.xlabel('Predicción')
-    plt.ylabel('Realidad')
-    plt.title('Matriz de Confusión')
-    plt.show()
+    return np.array([[tn, fp], [fn, tp]])
 
 def pr_auc(y_true, y_pred):
     """Calcula la curva Precisión-Recall y su área bajo la curva (AUC-PR).
