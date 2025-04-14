@@ -19,8 +19,8 @@ def train_best_random_forest(X_train, y_train, X_val, y_val):
     best_params = {}
 
     # Reducción fuerte del grid
-    n_trees_list = [5, 10]
-    max_depth_list = [5, 10]
+    n_trees_list = [5, 10, 20]
+    max_depth_list = [5, 10, 15]
     min_samples_split_list = [2]
 
     # Usamos un subconjunto de datos para evaluar hiperparámetros
@@ -31,7 +31,6 @@ def train_best_random_forest(X_train, y_train, X_val, y_val):
     for n_trees in n_trees_list:
         for max_depth in max_depth_list:
             for min_samples_split in min_samples_split_list:
-                print(f"Entrenando Random Forest con n_trees={n_trees}, max_depth={max_depth}, min_samples_split={min_samples_split}")
                 model = RandomForest(
                     n_trees=n_trees,
                     max_depth=max_depth,

@@ -61,7 +61,7 @@ class LinearDiscriminantAnalysis:
 
 
 def entropy(y):
-    classes, counts = np.unique(y, return_counts=True)
+    counts = np.bincount(y)
     probabilities = counts / counts.sum()
     return -np.sum(probabilities * np.log2(probabilities + 1e-9))  # Evita log(0)
 
@@ -90,15 +90,17 @@ class DecisionTree:
         self.root = None
 
     def fit(self, X, y):
+        self.classes_ = np.unique(y)
         self.root = self._build_tree(X, y)
 
     def _build_tree(self, X, y, depth=0):
         num_samples, num_features = X.shape
         num_classes = len(np.unique(y))
+        parent_entropy = entropy(y)  # Optimización 1
 
         if (self.max_depth is not None and depth >= self.max_depth) or \
-           num_samples < self.min_samples_split or \
-           num_classes == 1:
+        num_samples < self.min_samples_split or \
+        num_classes == 1:
             leaf_value = self._most_common_label(y)
             return TreeNode(value=leaf_value)
 
@@ -107,15 +109,22 @@ class DecisionTree:
 
         for feature_index in range(num_features):
             col = X[:, feature_index]
-            thresholds = np.unique(col)
-            if thresholds.size == 1:
-                continue  # sin ganancia si es constante
+            sorted_idx = np.argsort(col)
+            col_sorted = col[sorted_idx]
+            y_sorted = y[sorted_idx]
+
+            thresholds = []
+            for i in range(1, len(y_sorted)):
+                if y_sorted[i] != y_sorted[i - 1]:  # Cambio de clase
+                    t = (col_sorted[i] + col_sorted[i - 1]) / 2
+                    thresholds.append(t)
 
             for threshold in thresholds:
                 X_left, y_left, X_right, y_right = split_dataset(X, y, feature_index, threshold)
                 if len(y_left) == 0 or len(y_right) == 0:
                     continue
-                gain = self._information_gain(y, y_left, y_right)
+
+                gain = self._information_gain(parent_entropy, y_left, y_right)
                 if gain > best_gain:
                     best_gain = gain
                     best_split = (feature_index, threshold, X_left, y_left, X_right, y_right)
@@ -128,10 +137,12 @@ class DecisionTree:
         right = self._build_tree(X_right, y_right, depth + 1)
         return TreeNode(feature_index, threshold, left, right)
 
-    def _information_gain(self, parent, left, right):
-        weight_left = len(left) / len(parent)
-        weight_right = len(right) / len(parent)
-        return entropy(parent) - (weight_left * entropy(left) + weight_right * entropy(right))
+        
+    def _information_gain(self, parent_entropy, left, right):
+        weight_left = len(left) / (len(left) + len(right))
+        weight_right = len(right) / (len(left) + len(right))
+        return parent_entropy - (weight_left * entropy(left) + weight_right * entropy(right))
+
 
     def _most_common_label(self, y):
         return np.bincount(y).argmax()
@@ -147,8 +158,7 @@ class DecisionTree:
         else:
             return self._predict_sample(x, node.right)
 
-
-class RandomForest():
+class RandomForest:
     def __init__(self, n_trees=100, max_depth=None, min_samples_split=2):
         self.n_trees = n_trees
         self.max_depth = max_depth
@@ -157,32 +167,57 @@ class RandomForest():
 
     def fit(self, X, y):
         if isinstance(X, pd.DataFrame):
-            X = X.to_numpy(dtype=np.float64)  # Convertir a float64
+            X = X.to_numpy(dtype=np.float64)
         if isinstance(y, pd.Series):
-            y = y.to_numpy(dtype=int)  # Asegurar que y sea de tipo int
-        self.X = X
-        self.y = y
+            y = y.to_numpy(dtype=int)
+
+        n_samples = X.shape[0]
         self.trees = []
 
         for _ in range(self.n_trees):
             # Bootstrap sampling
-            indices = np.random.choice(len(X), len(X), replace=True)
+            indices = np.random.randint(0, n_samples, n_samples)
             X_sample = X[indices]
             y_sample = y[indices]
 
-            # Crear y entrenar un árbol
+            # Entrenar árbol
             tree = DecisionTree(max_depth=self.max_depth, min_samples_split=self.min_samples_split)
             tree.fit(X_sample, y_sample)
             self.trees.append(tree)
 
     def predict(self, X):
         if isinstance(X, pd.DataFrame):
-            X = X.to_numpy(dtype=np.float64)  
-        # Obtener predicciones de todos los árboles
-        predictions = np.array([tree.predict(X) for tree in self.trees])
-        # Votar por mayoría
-        majority_votes = np.apply_along_axis(lambda x: np.bincount(x).argmax(), axis=0, arr=predictions)
-        return majority_votes
+            X = X.to_numpy(dtype=np.float64)
+
+        # Cada árbol predice
+        predictions = np.array([tree.predict(X) for tree in self.trees])  # shape: (n_trees, n_samples)
+        # Voto por mayoría
+        return np.apply_along_axis(lambda x: np.bincount(x).argmax(), axis=0, arr=predictions)
+
+    def predict_proba(self, X):
+        if isinstance(X, pd.DataFrame):
+            X = X.to_numpy(dtype=np.float64)
+
+        n_samples = X.shape[0]
+        predictions = np.array([tree.predict(X) for tree in self.trees])  # shape: (n_trees, n_samples)
+
+        # Obtener todas las clases posibles de todos los árboles
+        all_classes = np.unique(np.concatenate([tree.classes_ for tree in self.trees]))
+        class_to_index = {cls: i for i, cls in enumerate(all_classes)}
+        n_classes = len(all_classes)
+
+        proba = np.zeros((n_samples, n_classes))
+
+        for i in range(n_samples):
+            sample_votes = predictions[:, i]
+            for vote in sample_votes:
+                proba[i, class_to_index[vote]] += 1
+            proba[i] /= self.n_trees
+
+        return proba
+
+
+
 
 class MulticlassLogisticRegression:
     def __init__(self, X, y, lr=0.01, L2=0.0, fit=True):

@@ -246,68 +246,164 @@ def roc_auc(y_true, y_scores):
     return fpr, tpr, auc_roc
 
 
-def plot_all_metrics(y_true, y_scores, y_pred):
+# def plot_all_metrics(y_true, y_scores, y_pred):
+#     """
+#     Grafica métricas de desempeño para un modelo multiclase:
+#     - Curvas PR y ROC para cada clase.
+#     - Matriz de confusión y métricas resumen.
+
+#     Parámetros:
+#     - y_true (array-like): Etiquetas verdaderas.
+#     - y_scores (array-like): Matriz de probabilidades predichas (n_samples x n_classes).
+#     - y_pred (array-like): Etiquetas predichas.
+#     """
+#     # Obtener resultados
+#     resultados_pr = pr_auc(y_true, y_scores)
+#     resultados_roc = roc_auc(y_true, y_scores)
+#     cm = matriz_de_confusion(y_true, y_pred)
+
+#     clases = np.unique(y_true)
+#     n_clases = len(clases)
+
+#     # Crear figura
+#     fig, axes = plt.subplots(2, 2, figsize=(14, 12))
+
+#     # === Curva PR Micro ===
+#     recalls, precisions, auc_pr = pr_auc(y_true, y_scores)
+#     axes[0, 0].plot(recalls, precisions, label=f'Micro-PR (AUC={auc_pr:.4f})')
+#     axes[0, 0].set_xlabel('Recall')
+#     axes[0, 0].set_ylabel('Precision')
+#     axes[0, 0].set_title('Curva Precisión-Recall (Micro)')
+#     axes[0, 0].legend()
+#     axes[0, 0].grid(True)
+
+#     # === Curva ROC Micro ===
+#     fpr, tpr, auc_roc = roc_auc(y_true, y_scores)
+#     axes[0, 1].plot(fpr, tpr, label=f'Micro-ROC (AUC={auc_roc:.4f})')
+#     axes[0, 1].plot([0, 1], [0, 1], linestyle='--', color='grey', label='Línea aleatoria')
+#     axes[0, 1].set_xlabel('FPR')
+#     axes[0, 1].set_ylabel('TPR')
+#     axes[0, 1].set_title('Curva ROC (Micro)')
+#     axes[0, 1].legend()
+#     axes[0, 1].grid(True)
+
+
+#     # === Matriz de Confusión ===
+#     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=clases, yticklabels=clases, ax=axes[1, 0])
+#     axes[1, 0].set_xlabel('Predicción')
+#     axes[1, 0].set_ylabel('Realidad')
+#     axes[1, 0].set_title('Matriz de Confusión')
+
+#     # === Métricas Resumen ===
+#     axes[1, 1].axis('off')
+#     metricas = {
+#         "Accuracy": round(accuracy(y_true, y_pred), 3),
+#         "F-Score": round(f_score(y_true, y_pred), 3),
+#         "Precision": round(precision(y_true, y_pred), 3),
+#         "Recall": round(recall(y_true, y_pred), 3),
+#     }
+#     tabla = [[k, v] for k, v in metricas.items()]
+#     tabla_ax = axes[1, 1].table(cellText=tabla, colLabels=["Métrica", "Valor"], cellLoc='center', loc='center')
+#     tabla_ax.auto_set_font_size(False)
+#     tabla_ax.set_fontsize(12)
+#     tabla_ax.scale(1.5, 2)
+#     axes[1, 1].set_title('Resumen de Métricas')
+
+#     plt.tight_layout()
+#     plt.show()
+
+def compare_models_metrics(y_vals, y_probs, y_preds, nombres=["LDA", "Logistic", "Random Forest"]):
     """
-    Grafica métricas de desempeño para un modelo multiclase:
-    - Curvas PR y ROC para cada clase.
-    - Matriz de confusión y métricas resumen.
+    Compara múltiples modelos graficando:
+    - Curva PR
+    - Curva ROC
+    - Tabla resumen de métricas (Accuracy, F1, Precision, Recall)
 
     Parámetros:
-    - y_true (array-like): Etiquetas verdaderas.
-    - y_scores (array-like): Matriz de probabilidades predichas (n_samples x n_classes).
-    - y_pred (array-like): Etiquetas predichas.
+    - y_vals: lista de arrays con etiquetas verdaderas.
+    - y_probs: lista de arrays de probabilidades predichas.
+    - y_preds: lista de arrays con etiquetas predichas.
+    - nombres: lista de nombres de los modelos.
     """
-    # Obtener resultados
-    resultados_pr = pr_auc(y_true, y_scores)
-    resultados_roc = roc_auc(y_true, y_scores)
-    cm = matriz_de_confusion(y_true, y_pred)
+    fig, axes = plt.subplots(1, 3, figsize=(22, 6))
 
-    clases = np.unique(y_true)
-    n_clases = len(clases)
+    # === 1. Curva PR ===
+    for i in range(len(y_vals)):
+        recalls, precisions, auc_pr = pr_auc(y_vals[i], y_probs[i])
+        axes[0].plot(recalls, precisions, label=f'{nombres[i]} (AUC={auc_pr:.3f})')
+    axes[0].set_title("Curva Precisión-Recall")
+    axes[0].set_xlabel("Recall")
+    axes[0].set_ylabel("Precision")
+    axes[0].legend()
+    axes[0].grid(True)
 
-    # Crear figura
-    fig, axes = plt.subplots(2, 2, figsize=(14, 12))
+    # === 2. Curva ROC ===
+    for i in range(len(y_vals)):
+        fpr, tpr, auc_roc = roc_auc(y_vals[i], y_probs[i])
+        axes[1].plot(fpr, tpr, label=f'{nombres[i]} (AUC={auc_roc:.3f})')
+    axes[1].plot([0, 1], [0, 1], linestyle='--', color='gray')
+    axes[1].set_title("Curva ROC")
+    axes[1].set_xlabel("FPR")
+    axes[1].set_ylabel("TPR")
+    axes[1].legend()
+    axes[1].grid(True)
 
-    # === Curva PR Micro ===
-    recalls, precisions, auc_pr = pr_auc(y_true, y_scores)
-    axes[0, 0].plot(recalls, precisions, label=f'Micro-PR (AUC={auc_pr:.4f})')
-    axes[0, 0].set_xlabel('Recall')
-    axes[0, 0].set_ylabel('Precision')
-    axes[0, 0].set_title('Curva Precisión-Recall (Micro)')
-    axes[0, 0].legend()
-    axes[0, 0].grid(True)
+    # === 3. Tabla de métricas ===
+    resultados = []
+    for i in range(len(y_vals)):
+        y_true = y_vals[i]
+        y_pred = y_preds[i]
+        resultados.append({
+            "Modelo": nombres[i],
+            "Accuracy": round(accuracy(y_true, y_pred), 3),
+            "Precision": round(precision(y_true, y_pred), 3),
+            "Recall": round(recall(y_true, y_pred), 3),
+            "F1": round(f_score(y_true, y_pred), 3),
+        })
+    tabla = pd.DataFrame(resultados)
 
-    # === Curva ROC Micro ===
-    fpr, tpr, auc_roc = roc_auc(y_true, y_scores)
-    axes[0, 1].plot(fpr, tpr, label=f'Micro-ROC (AUC={auc_roc:.4f})')
-    axes[0, 1].plot([0, 1], [0, 1], linestyle='--', color='grey', label='Línea aleatoria')
-    axes[0, 1].set_xlabel('FPR')
-    axes[0, 1].set_ylabel('TPR')
-    axes[0, 1].set_title('Curva ROC (Micro)')
-    axes[0, 1].legend()
-    axes[0, 1].grid(True)
+    # Insertar tabla
+    axes[2].axis('off')
+    table_data = tabla.values.tolist()
+    col_labels = tabla.columns.tolist()
+    table = axes[2].table(cellText=table_data, colLabels=col_labels, 
+                          cellLoc='center', loc='center')
+
+    # Estilo
+    for (row, col), cell in table.get_celld().items():
+        if row == 0:
+            cell.set_text_props(weight='bold', color='white')
+            cell.set_facecolor('#40466e')
+        else:
+            cell.set_facecolor('#f9f9f9')
+
+    table.auto_set_font_size(False)
+    table.set_fontsize(10)
+    table.scale(1.8, 2.5)
+    axes[2].set_title('Resumen de Métricas')
+
+    plt.tight_layout()
+    plt.show()
 
 
-    # === Matriz de Confusión ===
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=clases, yticklabels=clases, ax=axes[1, 0])
-    axes[1, 0].set_xlabel('Predicción')
-    axes[1, 0].set_ylabel('Realidad')
-    axes[1, 0].set_title('Matriz de Confusión')
+def compare_confusion_matrices(y_vals, y_preds, nombres=["LDA", "Logistic", "Random Forest"]):
+    """
+    Muestra las matrices de confusión de múltiples modelos en una figura 1x3.
 
-    # === Métricas Resumen ===
-    axes[1, 1].axis('off')
-    metricas = {
-        "Accuracy": round(accuracy(y_true, y_pred), 3),
-        "F-Score": round(f_score(y_true, y_pred), 3),
-        "Precision": round(precision(y_true, y_pred), 3),
-        "Recall": round(recall(y_true, y_pred), 3),
-    }
-    tabla = [[k, v] for k, v in metricas.items()]
-    tabla_ax = axes[1, 1].table(cellText=tabla, colLabels=["Métrica", "Valor"], cellLoc='center', loc='center')
-    tabla_ax.auto_set_font_size(False)
-    tabla_ax.set_fontsize(12)
-    tabla_ax.scale(1.5, 2)
-    axes[1, 1].set_title('Resumen de Métricas')
+    Parámetros:
+    - y_vals: lista de arrays con etiquetas verdaderas.
+    - y_preds: lista de arrays con etiquetas predichas.
+    - nombres: lista de nombres de los modelos.
+    """
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+
+    for i in range(len(y_vals)):
+        cm = matriz_de_confusion(y_vals[i], y_preds[i])
+        clases = np.unique(y_vals[i])
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=clases, yticklabels=clases, ax=axes[i])
+        axes[i].set_title(f'Matriz de Confusión - {nombres[i]}')
+        axes[i].set_xlabel('Predicción')
+        axes[i].set_ylabel('Realidad')
 
     plt.tight_layout()
     plt.show()
