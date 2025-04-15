@@ -16,44 +16,38 @@ class LinearDiscriminantAnalysis:
         self.n_classes = len(self.classes)
         n_features = self.Xtrain.shape[1]
         
-        # Medias por clase
-        means = np.array([np.mean(self.Xtrain[self.ytrain == cls], axis=0) for cls in self.classes])  # (n_classes, n_features)
+        means = np.array([np.mean(self.Xtrain[self.ytrain == cls], axis=0) for cls in self.classes])
 
-        # Matriz de covarianza compartida (LDA asume varianza común)
         cov = np.zeros((n_features, n_features))
         for cls, mean in zip(self.classes, means):
             X_cls = self.Xtrain[self.ytrain == cls]
             cov += (X_cls - mean).T @ (X_cls - mean)
-        cov /= len(self.Xtrain) - self.n_classes  # Bessel correction
+        cov /= len(self.Xtrain) - self.n_classes 
 
-        # Inversa de la covarianza
-        cov_inv = np.linalg.pinv(cov)  # usamos pseudo-inversa por seguridad
+        cov_inv = np.linalg.pinv(cov)  
 
-        # Coeficientes de la función discriminante lineal
-        self.coef = cov_inv @ means.T  # (n_features, n_classes)
+        self.coef = cov_inv @ means.T 
 
         # Priors por clase
         priors = np.array([np.mean(self.ytrain == cls) for cls in self.classes])
 
-        # Término independiente: -½ * μᵗ Σ⁻¹ μ + log(prior)
         self.intercepts = []
         for i in range(self.n_classes):
             mean_i = means[i]
             term = -0.5 * mean_i @ cov_inv @ mean_i + np.log(priors[i])
             self.intercepts.append(term)
-        self.intercepts = np.array(self.intercepts)  # (n_classes,)
+        self.intercepts = np.array(self.intercepts)  
 
 
     def predict(self, X):
-        # Función discriminante lineal: X @ coef + intercept
-        scores = X @ self.coef + self.intercepts  # (n_samples, n_classes)
+        scores = X @ self.coef + self.intercepts 
         preds = self.classes[np.argmax(scores, axis=1)]
         return preds
     
     def predict_proba(self, X):
         X = X if isinstance(X, np.ndarray) else X.to_numpy()
         scores = X @ self.coef + self.intercepts
-        e_z = np.exp(scores - np.max(scores, axis=1, keepdims=True))  # estabilidad
+        e_z = np.exp(scores - np.max(scores, axis=1, keepdims=True)) 
         probs = e_z / np.sum(e_z, axis=1, keepdims=True)
         return probs
 
@@ -63,7 +57,7 @@ class LinearDiscriminantAnalysis:
 def entropy(y):
     counts = np.bincount(y)
     probabilities = counts / counts.sum()
-    return -np.sum(probabilities * np.log2(probabilities + 1e-9))  # Evita log(0)
+    return -np.sum(probabilities * np.log2(probabilities + 1e-9)) 
 
 def split_dataset(X, y, feature_index, threshold):
     left_mask = X[:, feature_index] <= threshold
@@ -77,7 +71,7 @@ class TreeNode:
         self.threshold = threshold
         self.left = left
         self.right = right
-        self.value = value  # Clase si es hoja
+        self.value = value 
 
     def is_leaf(self):
         return self.value is not None
@@ -190,7 +184,7 @@ class RandomForest:
             X = X.to_numpy(dtype=np.float64)
 
         # Cada árbol predice
-        predictions = np.array([tree.predict(X) for tree in self.trees])  # shape: (n_trees, n_samples)
+        predictions = np.array([tree.predict(X) for tree in self.trees])
         # Voto por mayoría
         return np.apply_along_axis(lambda x: np.bincount(x).argmax(), axis=0, arr=predictions)
 
@@ -199,7 +193,7 @@ class RandomForest:
             X = X.to_numpy(dtype=np.float64)
 
         n_samples = X.shape[0]
-        predictions = np.array([tree.predict(X) for tree in self.trees])  # shape: (n_trees, n_samples)
+        predictions = np.array([tree.predict(X) for tree in self.trees]) 
 
         # Obtener todas las clases posibles de todos los árboles
         all_classes = np.unique(np.concatenate([tree.classes_ for tree in self.trees]))
@@ -227,12 +221,12 @@ class MulticlassLogisticRegression:
         self.n_classes = len(self.classes)
         self.lr = lr
         self.L2 = L2
-        self.coef = np.zeros((self.X.shape[1], self.n_classes))  # (n_features + 1, n_classes)
+        self.coef = np.zeros((self.X.shape[1], self.n_classes)) 
         if fit:
             self.fit()
 
     def softmax(self, z):
-        e_z = np.exp(z - np.max(z, axis=1, keepdims=True))  # estabilidad numérica
+        e_z = np.exp(z - np.max(z, axis=1, keepdims=True)) 
         return e_z / np.sum(e_z, axis=1, keepdims=True)
 
     def one_hot(self, y):
@@ -245,7 +239,7 @@ class MulticlassLogisticRegression:
     def compute_gradient(self, y_onehot, probs):
         n = self.X.shape[0]
         grad = -1/n * self.X.T @ (y_onehot - probs)
-        grad[1:] += 2 * self.L2 * self.coef[1:]  # regularización (sin bias)
+        grad[1:] += 2 * self.L2 * self.coef[1:] 
         return grad
 
     def fit(self, tolerancia=1e-6, max_iter=1000):

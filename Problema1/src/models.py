@@ -58,14 +58,14 @@ class LogisticRegression():
         """Realiza predicciones de clase con el modelo entrenado."""
         return (self.predict_proba(X) >= self.threshold).astype(int)
 
-    def show_hyperparameters(self):
+    def show_hyperparameters(self, name="Hyperparameters"):
         """Muestra los hiperparámetros del modelo."""
         hyperparams = {
             'learning_rate': self.lr,
             'threshold': self.threshold,
             'L2': self.L2,
-            'weights': (self.weights)
+            'weights': str(self.weights)  
         }
-        df = pd.DataFrame(hyperparams, index=["Hyperparameters"])
+        df = pd.DataFrame(hyperparams, index=[name])
         display(df)
     

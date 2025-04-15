@@ -39,10 +39,10 @@ def plot_boxplots(df, bin_cols=None):
         bin_cols = []
 
     num_cols = [col for col in df.select_dtypes(include='number').columns if col not in bin_cols]
-    n_cols = 3
-    n_rows = (len(num_cols) + n_cols - 1) // n_cols
+    n_cols = 4  # Ahora hay 4 columnas
+    n_rows = (len(num_cols) + n_cols - 1) // n_cols  # Ajusta la cantidad de filas
 
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(14, n_rows * 3))
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(16, n_rows * 3))  # Tamaño ajustado para 4 columnas
     axes = axes.flatten()
 
     for i, col in enumerate(num_cols):
@@ -54,6 +54,7 @@ def plot_boxplots(df, bin_cols=None):
 
     plt.tight_layout()
     plt.show()
+
 
 def plot_metrics_summary(y_true, y_scores, y_pred):
     """Grafica en una figura 2x2: curva PR, curva ROC, matriz de confusión y métricas.
@@ -133,7 +134,16 @@ def plot_metrics_summary(y_true, y_scores, y_pred):
 
 
 def plot_all_metrics(resultados, y_val):
-    """Grafica curvas PR, ROC y una tabla resumen de múltiples modelos en 1x3."""
+    """Grafica en una figura 1x3: curva PR, curva ROC y una tabla resumen de métricas.
+
+    Parámetros:
+    - resultados (list of dict): lista de resultados por modelo. Cada dict debe incluir:
+        - "Modelo" (str): nombre del modelo.
+        - "y_scores" (array): probabilidades predichas.
+        - métricas como "Accuracy", "Precision", "Recall", "F1", etc.
+    - y_val (array): etiquetas verdaderas del conjunto de validación.
+    """
+
     import matplotlib.pyplot as plt
 
     fig, axes = plt.subplots(1, 3, figsize=(26, 6))

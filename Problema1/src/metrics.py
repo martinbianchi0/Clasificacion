@@ -1,7 +1,4 @@
 import numpy as np
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 def precision(y_true, y_pred):
     """Calcula la precisión de las predicciones (TP / (TP + FP)).
@@ -125,30 +122,3 @@ def roc_auc(y_true, y_scores):
 
     auc_roc = np.trapz(tpr_sorted, fpr_sorted)
     return fpr_sorted, tpr_sorted, auc_roc
-
-def evaluar_modelo(nombre, model, X_val, y_val):
-    """Evalúa un modelo de clasificación binaria sobre un conjunto de validación.
-
-    Parámetros:
-    - nombre (str): nombre del modelo.
-    - model (objeto): modelo entrenado que implemente `predict` y `predict_proba`.
-    - X_val (array): features del conjunto de validación.
-    - y_val (Series): etiquetas verdaderas del conjunto de validación.
-
-    Retorna:
-    - dict: métricas del modelo (accuracy, precisión, recall, F1, AUC-ROC, AUC-PR, y scores)."""
-    y_scores = model.predict_proba(X_val)
-    y_pred = model.predict(X_val)
-    _, _, auc_r = roc_auc(y_val, y_scores)
-    _, _, auc_pr = pr_auc(y_val, y_scores)
-
-    return {
-        "Modelo": nombre,
-        "Accuracy": accuracy(y_val, y_pred),
-        "Precision": precision(y_val, y_pred),
-        "Recall": recall(y_val, y_pred),
-        "F-Score": f_score(y_val, y_pred),
-        "AUC-ROC": auc_r,
-        "AUC-PR": auc_pr,
-        "y_scores": y_scores
-    }

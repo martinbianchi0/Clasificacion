@@ -17,6 +17,46 @@ def label_encode(data, column, mapping=None):
         data[column] = data[column].astype('category').cat.codes
     return data
 
+def one_hot_encode(data, column, categories=None, drop_first=False):
+    """
+    Codifica una columna categórica usando one-hot encoding, conservando los NaNs
+    y solo creando columnas para categorías específicas si se proveen.
+
+    Parámetros:
+    - data (pd.DataFrame): DataFrame de entrada.
+    - column (str): Columna a codificar.
+    - categories (list, opcional): Lista de categorías a codificar. Las que no estén se marcan como NaN.
+    - drop_first (bool): Si True, elimina la primera categoría para evitar multicolinealidad.
+
+    Retorna:
+    - pd.DataFrame: DataFrame con la columna codificada y original eliminada.
+    """
+    col_values = data[column].astype(str).copy()
+
+    if categories is not None:
+        col_values = col_values.where(col_values.isin(categories))  # los no deseados se vuelven NaN
+
+    # One-hot encode (solo las que quedaron en categories o NaN)
+    dummies = pd.get_dummies(col_values, prefix=column)
+
+    # Si querés dropear la primera categoría para evitar multicolinealidad
+    if drop_first:
+        dummies = dummies.iloc[:, 1:]
+
+    # Asegurar que sea float (para aceptar NaNs)
+    dummies = dummies.astype(float)
+
+    # Restaurar NaNs en las filas que eran originalmente NaN o que fueron filtradas
+    is_nan = col_values.isna()
+    dummies[is_nan.values] = np.nan
+
+    # Reemplazar columna original
+    data = data.drop(column, axis=1)
+    data = pd.concat([data, dummies], axis=1)
+
+    return data
+
+
 def clean_outliers_iqr(df):
     """Devuelve una copia del DataFrame con outliers removidos usando IQR (calculado por columna)."""
     df_clean = df.copy()
@@ -41,26 +81,6 @@ def clean_outliers(df, limits):
 
     for col, (min_val, max_val) in limits.items():
         df[col] = df[col].where(df[col].between(min_val, max_val) | df[col].isna())
-
-# def train_val_split(dx, dy=None, split=0.8):
-#     """Divide dx y dy en conjuntos de entrenamiento y validación.
-
-#     Parámetros:
-#     - dx (pd.DataFrame): features.
-#     - dy (pd.Series, opcional): etiquetas.
-#     - split (float): proporción para el set de entrenamiento.
-
-#     Retorna:
-#     - tuple: subconjuntos divididos (x_train, x_val, y_train, y_val) si dy está dado, sino solo (x_train, x_val)."""
-#     n = len(dx)
-#     n = int(n * split)
-#     x_train = dx[:n].copy()
-#     x_val = dx[n:].copy()
-#     if dy is None:
-#         return x_train, x_val
-#     y_train = dy[:n].copy()
-#     y_val = dy[n:].copy()
-#     return x_train, x_val, y_train, y_val
 
 def train_val_split(dx, dy=None, split=0.8, shuffle=False, random_state=None):
     """Divide dx y dy en conjuntos de entrenamiento y validación.
@@ -91,8 +111,6 @@ def train_val_split(dx, dy=None, split=0.8, shuffle=False, random_state=None):
     y_train = dy[:n].copy()
     y_val = dy[n:].copy()
     return x_train, x_val, y_train, y_val
-
-
 
 def robust_fit(X):
     """Calcula mediana e IQR.  
